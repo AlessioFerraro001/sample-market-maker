@@ -1,0 +1,48 @@
+config.txt
+Edit these values to customize the behavior of the bot
+Please write your values as: /<value>/
+
+User Wallet Standard- 
+How much standard currency the bot will start with the make trades
+/0/
+
+Currency Standard- 
+The type of standard currency the bot will trade with
+The default is USD
+/USD/
+
+User Wallet Crypto- 
+How much cryptp currency the bot will start with the make trades
+/0/
+
+Currency Crypto- 
+The type of crypto currency the bot will trade with
+The default is XBT
+/XBT/
+
+Data Source-
+Where the bot will be getting its trade data from 
+Only BitMEX and CoinMarketCap
+/BitMEX/
+
+Wait Time- 
+How long the bot will wait (in seconds) for better prices when one side is hit
+The default is 1800 seconds (30 minutes)
+/1800/
+
+Agrressiveness-
+How much spread the bot will take when making trades.
+The value is a decimal between 1 and 0: 1 for max aggression, 0 for none
+The default is 0.5
+NOTE: Higher aggression will result in higher short-term profits, but quickly drain the market
+/0.5/
+
+Terminate Time-
+How long the bot will run before termination sequence begins
+The value is the number of seconds you want the bot to run
+The default is 86400 seconds (one day)
+/60/
+
+Lossy Shutdown-
+In the case that, during shutdown procedure, the bot is unable to offload all sell offers, should the bot chance quicker shutdown at a loss of money
+/False/

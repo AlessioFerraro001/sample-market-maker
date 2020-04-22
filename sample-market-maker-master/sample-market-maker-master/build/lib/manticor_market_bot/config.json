@@ -1,0 +1,11 @@
+{
+  "walletAmountStandard": 500,
+  "walletAmountCrypto": 500,
+  "currencyStandard": "USD",
+  "currencyCrypto": "XBT",
+  "dataSource": "BitMEX",
+  "waitTime": 1800,
+  "aggressiveness": 0.5,
+  "terminateTime": 60,
+  "lossyShutdown": false
+}
