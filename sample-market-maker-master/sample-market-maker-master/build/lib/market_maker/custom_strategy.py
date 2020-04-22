@@ -110,7 +110,7 @@ class CustomOrderManager(OrderManager):
 
     def place_orders(self): #-> None:
         # implement your custom strategy here
-        self.make_orders()
+        # self.make_orders()
         # Invetory skew can be found in get_ticker()
         # buy_orders = []
         # sell_orders = []
