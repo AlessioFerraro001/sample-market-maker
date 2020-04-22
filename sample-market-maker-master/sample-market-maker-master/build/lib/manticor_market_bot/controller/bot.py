@@ -14,7 +14,6 @@ class Bot:
 
     def updateConfigs(self):
         #Download JSON from website
-
         with open("manticor_market_bot\\config.json", 'r') as j:
             self.config = json.loads(j.read())
         self.config["terminateTime"] = self.config["terminateTime"] + time.time()
