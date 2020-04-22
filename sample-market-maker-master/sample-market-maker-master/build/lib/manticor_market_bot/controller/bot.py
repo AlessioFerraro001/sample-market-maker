@@ -13,19 +13,24 @@ class Bot:
 
     def updateConfigs(self):
         #Download JSON from website
-        self.config = json.loads("manticor_market_bot\\config.json")
+
+        with open("manticor_market_bot/config.json", 'r') as j:
+            self.config = json.loads(j.read())
+            print(self.config)
+        #self.config = json.loads("manticor_market_bot/config.json")
+        self.config["terminateTime"] = self.config["terminateTime"] + time.time()
 
     def terminate(self):
         self.didTerminate = True
 
     def test_run(self):
-        print("Termination time: %f" % self.config.terminateTime)
+        print("Termination time: %f" % self.config["terminateTime"])
         while not self.didTerminate:
             self.data.update()
             print("Trades are occuring!")
             print("Current time: %f" % time.time())
             print("Best Ask: %f / Best Bid: %f" % (self.data.bestAsk, self.data.bestBid))
-            if self.config.terminateTime <= time.time():
+            if self.config["terminateTime"] <= time.time():
                 self.didTerminate = True
                 print("Trades have concluded!")
             else:
