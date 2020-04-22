@@ -10,6 +10,9 @@ class Bot:
         self.config = {}
         self.updateConfigs()
         self.data = Data(self.config)
+        self.toCreate = []
+        self.toAmend = []
+        self.submitTime = time.time()
 
 
     def updateConfigs(self):
@@ -20,6 +23,36 @@ class Bot:
 
     def terminate(self):
         self.didTerminate = True
+
+    def addCreate(self, side):
+        newOrder = {}
+        if side == "Buy":
+            newOrder = {'orderID': self.data.orderID, 'orderQty': 1,
+                        'price': self.data.bestBid, 'side': side}
+        if side == "Sell":
+            newOrder = {'orderID': self.data.orderID, 'orderQty': 1,
+                        'price': self.data.bestAsk, 'side': side}
+        self.toCreate.append(newOrder)
+
+    def addAmend(self, order):
+        newOrder = {}
+        if order["side"] == "Buy":
+            newOrder = {'orderID': order["orderID"], 'orderQty': 1,
+                        'price': self.data.bestBid, 'side': order["side"]}
+        if order["side"] == "Sell":
+            newOrder = {'orderID': order["orderID"], 'orderQty': 1,
+                        'price': self.data.bestAsk, 'side': order["side"]}
+        self.toAmend.append(newOrder)
+
+    def submit(self):
+        if not self.toCreate == []:
+            # TODO: send the orders in bulk
+            orderManager.exchange.create_bulk_orders(self.toCreate)
+        if not self.toAmend == []:
+            # TODO: send to ammend in bulk
+            orderManager.exchange.amend_bulk_orders(self.toAmend)
+        self.toCreate = []
+        self.toAmend = []
 
     def test_run(self):
         print("Termination time: %f" % self.config["terminateTime"])
@@ -41,10 +74,13 @@ class Bot:
 
     def run(self):
         while not self.didTerminate:
+            if self.submitTime <= time.time() + 30:
+                self.submit()
             self.data.update()
             if (self.data.numSell - self.data.numBuy) <= 0 & self.data.cryptoAmount > 0:
                 self.didSomethingHappen = True
                 # TODO: Send new sell offer
+                self.addCreate("Sell")
                 self.data.pastOrders.insert(self.data.orderID, Order())
                 self.data.pastOrders[self.data.orderID].timestamp = time.time()
                 self.data.pastOrders[self.data.orderID].side = "Sell"
@@ -54,6 +90,7 @@ class Bot:
                     self.didSomethingHappen = True
                     if (time.time() - self.data.pastOrders) >= self.config["waitTime"]:
                         # TODO: Resubmit sell offer
+                        self.addAmend(order)
                         self.data.pastOrders.insert(self.data.orderID, Order())
                         self.data.pastOrders[self.data.orderID].timestamp = time.time()
                         self.data.pastOrders[self.data.orderID].side = "Sell"
@@ -61,6 +98,7 @@ class Bot:
             if (self.data.numBuy - self.data.numSell) < 0 & self.data.standardAmount >= self.data.bestBid:
                 self.didSomethingHappen = True
                 # TODO: Send new buy offer
+                self.addCreate("Buy")
                 self.data.pastOrders.insert(self.data.orderID, Order())
                 self.data.pastOrders[self.data.orderID].timestamp = time.time()
                 self.data.pastOrders[self.data.orderID].side = "Buy"
@@ -70,6 +108,7 @@ class Bot:
                     self.didSomethingHappen = True
                     if (time.time() - self.data.pastOrders) >= self.config["waitTime"]:
                         # TODO: Resubmit buy offer
+                        self.addAmend(order)
                         self.data.pastOrders.insert(self.data.orderID, Order())
                         self.data.pastOrders[self.data.orderID].timestamp = time.time()
                         self.data.pastOrders[self.data.orderID].side = "Buy"
