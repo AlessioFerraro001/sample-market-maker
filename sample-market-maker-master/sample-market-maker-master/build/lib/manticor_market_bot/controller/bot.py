@@ -133,7 +133,7 @@ class Bot:
             # TODO: If rate of change is too negative
         # TODO: Cancel all buy orders
         # TODO: Place sell orders for all currently possessed crypto
-        while not orderManager.exchange.get_orders() == []:
+        while orderManager.exchange.get_orders():
             if time.time() - self.config["terminateTime"] > 5400:
                 if self.config["lossyShutdown"]:
                     pass
@@ -145,6 +145,6 @@ class Bot:
                     # TODO: Email user and shut down
             else:
                 time.sleep(self.configs["waitTime"])
-                if not orderManager.exchange.get_orders() == []:
+                if orderManager.exchange.get_orders():
                     # TODO: Resubmit sell offers
                     pass
