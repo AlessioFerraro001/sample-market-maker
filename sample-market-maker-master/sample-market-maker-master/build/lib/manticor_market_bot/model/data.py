@@ -34,11 +34,3 @@ class Data:
         ticker = orderManager.get_ticker()
         self.bestBid = ticker["buy"]
         self.bestAsk = ticker["sell"]
-
-    def addOrder(self, isBuy):
-        self.pastOrders.append(Order(isBuy))
-        self.orderID += 1
-
-    def deleteOrder(self, id):
-        self.pastOrders.pop(id)
-        self.orderID -= 1

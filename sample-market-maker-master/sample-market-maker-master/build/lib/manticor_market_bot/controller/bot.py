@@ -88,7 +88,7 @@ class Bot:
             for order in orderManager.exchange.get_orders():
                 if order['side'] == "Sell":
                     self.didSomethingHappen = True
-                    if (time.time() - self.data.pastOrders) >= self.config["waitTime"]:
+                    if (time.time() - self.data.pastOrders[self.data.orderID].timestamp) >= self.config["waitTime"]:
                         # TODO: Resubmit sell offer
                         self.addAmend(order)
                         self.data.pastOrders.insert(self.data.orderID, Order())
