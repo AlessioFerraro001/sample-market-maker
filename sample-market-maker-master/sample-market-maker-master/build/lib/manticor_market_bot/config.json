@@ -1,11 +1,15 @@
 {
-  "walletAmountStandard": 500,
-  "walletAmountCrypto": 500,
+  "dataSource": "BitMEX",
   "currencyStandard": "USD",
   "currencyCrypto": "XBT",
-  "dataSource": "BitMEX",
+  "walletAmountStandard": 500,
+  "walletAmountCrypto": 500,
+  "minSpread": 0.5,
+  "marketLowThreshold": -0.5,
+  "marketHighThreshold": 0.5,
+  "relistThreshold": 0.01,
   "waitTime": 1800,
-  "aggressiveness": 0.5,
+  "aggressiveness": 0.005,
   "terminateTime": 60,
   "lossyShutdown": false
 }

@@ -1,3 +1,20 @@
+ISSUES:
+-No post terminate sequence in bot
+-config.waitTime unused
+-config.minSpread, bot.spread, and bot.getSpread() unused
+-bot.sanityCheck() unused
+--unsure about first line in sanityCheck()
+--how do we limit how often its used? using the typical "fall through if its been too soon" method feels dangerous in this case
+-Does bitmex.funds need its own spot in lastUpdate?
+-exchange.get_orders() is just bitmex.open_orders(), does "open" mean only active or all?
+-bot.update() unused
+-orderQty still yet to be figured out (just replaced with 1 for now)
+-In bot.createOrder(), orderID left blank for now
+-math.toNearest doesn't exist
+-In submitOrders(), python doesn't like the syntax in the reversed list, given more simple syntax for now
+-What do we do when we receive an error message from BitMEX?
+-bot.filledOrders unused
+
 Notes:
 -Only 60 requests per second
 --Getting best bid or best ask: 1
@@ -69,9 +86,6 @@ lastUpdated = { bestAsk: 0, bestBid: 0, createBulkOrders: 0, amendBulkOrders: 0,
 toCreate = []
 toAmend = []
 orderPairs = 6
-
-updateConfigs():
-    give the bot config.json
 
 sanitize(response):
     if response is a BitMEX overload error:
