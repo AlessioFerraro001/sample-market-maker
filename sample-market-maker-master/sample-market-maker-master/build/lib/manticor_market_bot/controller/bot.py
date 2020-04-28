@@ -7,14 +7,18 @@ class Bot:
     def __init__(self):
         self.didTerminate = False
         self.data = Data()
-        self.data.updateConfigs()
-        self.lastUpdated = { "bestAsk": 0.0, "bestBid": 0.0, "createBulkOrders": 0.0, "amendBulkOrders": 0.0, "open_orders": 0.0}
+        x = time.time()
+        self.lastUpdated = { "bestAsk": x, "bestBid": x, "createBulkOrders": x, "amendBulkOrders": x, "open_orders": x}
         self.bestAsk = 0
+        self.sellPos = 0
         self.updateAsk()
         self.bestBid = 0
+        self.buyPos = 0
         self.updateBid()
         #self.spread = self.bestAsk - self.bestBid
         self.orderPairs = 6
+        self.orderStartQty = 100
+        self.orderStepQty = 100
         self.position = 0
         self.localAllOrders = {}
         self.localCurrentOrders = {}
@@ -24,6 +28,7 @@ class Bot:
         self.toCreate = []
         self.toAmend = []
 
+
     #Not yet used, ask about how
     def sanitize(self, response):
         if response == {"error": {"message": "The system is currently overloaded. Please try again later.", "name": "HTTPError"}}:
@@ -31,10 +36,9 @@ class Bot:
         return True
 
     def sanityCheck(self):
-        if orderManager.bitmex.funds() >= self.data.standardAmount + (self.data.cryptoAmount * self.bestAsk): #UNSURE
-            self.didTerminate = True
-        elif orderManager.bitmex.get_orders() != self.localAllOrders:
-            self.didTerminate = True
+        #if orderManager.bitmex.get_orders() != self.localAllOrders:
+        #    self.didTerminate = True
+        return True
 
     def updateAsk(self):
         if (self.lastUpdated["bestAsk"] - time.time()) > 60.0:
@@ -51,8 +55,16 @@ class Bot:
             self.bestBid = ticker["buy"]
             self.lastUpdated["bestBid"] = time.time()
 
+    def updateOrderValues(self):
+        ticker = orderManager.get_ticker()
+        self.updateAsk()
+        self.updateBid()
+        self.buyPos = self.bestBid + orderManager.instrument['tickSize']
+        self.sellPos = self.bestAsk - orderManager.instrument['tickSize']
+
     def createOrder(self, pos):
         newOrder = {}
+        quantity = self.orderStartQty + (abs(pos) - 1) * self.orderStepQty
         if pos >= 0:
             newOrder = {'orderQty': 1, 'price': self.getOrderPrice(pos), 'side': "Buy"}
         if pos < 0:
@@ -70,22 +82,18 @@ class Bot:
         self.toAmend.append(newOrder)
 
     def getOrderPrice(self, pos):
-        price = self.bestBid if pos >= 0 else self.bestAsk
+        price = self.buyPos if pos >= 0 else self.sellPos
         if pos < 0:
             pos += 1
         else:
             pos -= 1
+        # TODO: make toNearest
         #return math.toNearest(price * (1 + self.data.config["aggressiveness"]) ** pos, orderManager.instrument['tickSize'])
         return price * (1 + self.data.config["aggressiveness"]) ** pos
 
     def submitOrders(self):
         if self.lastUpdated["create_bulk_orders"] - time.time() > 60: #TEMP VALUE
-            #orderPos = reversed([for i in range(1, self.orderPairs)])
-            #FOR NOW
-            orderPos = []
-            for i in range(1, self.orderPairs):
-                orderPos.append(i)
-            orderPos.reverse()
+            orderPos = reversed([i for i in range(1, self.orderPairs)])
             for i in orderPos:
                 if not self.maxPositionCheck():
                     self.createOrder(i)
@@ -130,14 +138,16 @@ class Bot:
         for order in self.marketAllOrders:
             if (order['side'] == "Sell") & (order['ordStatus'] == "Filled:"):
                 self.data.numBuy += 1
-                self.data.standardAmount -= order.price
-                self.data.cryptoAmount += order.quantity
+                self.data.standardAmount -= order["price"] * order["quantity"]
+                self.data.cryptoAmount += order["quantity"]
+                self.feeProfit += (order["price"] * order["quantity"]) * 0.0250
                 self.localCurrentOrders.pop(order["orderID"], None)
                 self.localFilledOrders[order["orderID"]] = order
             if (order['side'] == "Buy") & (order['ordStatus'] == "Filled:"):
                 self.data.numSell += 1
-                self.data.standardAmount += order.price
-                self.data.cryptoAmount -= order.quantity
+                self.data.standardAmount += order["price"] * order["quantity"]
+                self.data.cryptoAmount -= order["quantity"]
+                self.feeProfit += (order["price"] * order["quantity"]) * 0.0250
                 self.localCurrentOrders.pop(order["orderID"], None)
                 self.localFilledOrders[order["orderID"]] = order
 
@@ -167,13 +177,14 @@ class Bot:
                 time.sleep(10)
 
     def start(self):
-        #placeholders
-        self.run()
+        if orderManager.bitmex.funds()["availableMargin"] >= self.data.cryptoAmount:
+            self.run()
+        #TODO: spit back out an error
 
     def run(self):
         while not self.didTerminate:
-            self.updateAsk()
-            self.updateBid()
+            self.sanityCheck()
+            self.updateOrderValues()
             self.data.rateOfChange(self.recentAsks)
             if self.data.marketTrend == "Low":
                 self.position = 1
@@ -184,4 +195,3 @@ class Bot:
                     self.position = -1
             else:
                 self.submitOrders()
-            self.sanityCheck()

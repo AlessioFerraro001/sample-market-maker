@@ -4,8 +4,9 @@ class Data:
     def __init__(self):
         # The json that holds all the user configured values
         self.config = {}
+        self.updateConfigs()
         # The amount of standard currency we have to buy with
-        self.standardAmount = self.config["walletAmountStandard"]
+        self.standardAmount = 0
         # The amount of cryptocurrency we have to sell
         self.cryptoAmount = self.config["walletAmountCrypto"]
         # The number of buy orders we have completed by now
