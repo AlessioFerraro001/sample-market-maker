@@ -220,11 +220,11 @@ class OrderManager:
 
     def reset(self):
         self.exchange.cancel_all_orders()
-        self.sanity_check()
-        self.print_status()
+        #self.sanity_check()
+        #self.print_status()
 
         # Create orders and converge.
-        self.place_orders()
+        #self.place_orders()
 
     def print_status(self):
         """Print the current MM status."""

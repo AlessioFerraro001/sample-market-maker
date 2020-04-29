@@ -8,6 +8,6 @@
   "marketHighThreshold": 0.5,
   "relistThreshold": 0.01,
   "aggressiveness": 0.005,
-  "terminateTime": 60,
+  "terminateTime": 120,
   "lossyShutdown": false
 }
