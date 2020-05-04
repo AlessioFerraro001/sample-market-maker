@@ -3,7 +3,7 @@
   "currencyStandard": "USD",
   "currencyCrypto": "XBT",
   "walletAmountCrypto": 500,
-  "minSpread": 0.5,
+  "minSpread": 0.01,
   "marketLowThreshold": -0.5,
   "marketHighThreshold": 0.5,
   "relistThreshold": 0.01,

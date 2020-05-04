@@ -7,7 +7,7 @@ WAIT_TIME = 5
 
 def toNearest(num, round_interval):
     numDec = Decimal(str(round_interval))
-    return float((Decimal(round(num / round_interval)) * numDec))
+    return float((Decimal(round(num / round_interval, 0)) * numDec))
 
 class Bot:
     def __init__(self):
@@ -49,19 +49,21 @@ class Bot:
         return True
 
     def updateAsk(self):
-        if time.time() - self.lastUpdated["bestAsk"] > WAIT_TIME:
+        if time.time() - self.lastUpdated["bestAsk"] > WAIT_TIME - 1:
             ticker = orderManager.exchange.get_ticker()
             self.bestAsk = ticker["sell"]
             self.recentAsks.append(self.bestAsk)
             if len(self.recentAsks) >= 200:
                 del self.recentAsks[100:]
             self.lastUpdated["bestAsk"] = time.time()
+            manticoreLog.info("Best Ask: %s" % self.bestAsk)
 
     def updateBid(self):
-        if time.time() - self.lastUpdated["bestBid"] > WAIT_TIME:
+        if time.time() - self.lastUpdated["bestBid"] > WAIT_TIME - 1:
             ticker = orderManager.exchange.get_ticker()
             self.bestBid = ticker["buy"]
             self.lastUpdated["bestBid"] = time.time()
+            manticoreLog.info("Best Bid: %s" % self.bestBid)
 
     def updateOrderValues(self):
         self.updateAsk()
@@ -69,13 +71,25 @@ class Bot:
         self.buyPos = self.bestBid + orderManager.instrument['tickSize']
         self.sellPos = self.bestAsk - orderManager.instrument['tickSize']
 
+        if self.buyPos == orderManager.exchange.get_highest_buy()['price']:
+            self.buyPos = self.bestBid
+        if self.sellPos == orderManager.exchange.get_lowest_sell()['price']:
+            self.sellPos = self.bestAsk
+
+        if self.buyPos * (1 + self.data.config['minSpread']) > self.sellPos:
+            self.buyPos = (1 - (self.data.config['minSpread'] / 2)) * self.buyPos
+            self.sellPos = (1 + (self.data.config['minSpread'] / 2)) * self.sellPos
+
     def createOrder(self, pos):
+        price = self.getOrderPrice(pos)
         newOrder = {}
         quantity = self.orderStartQty + (abs(pos) - 1) * self.orderStepQty
-        if pos >= 0:
-            newOrder = {'orderQty': 1, 'price': self.getOrderPrice(pos), 'side': "Buy"}
         if pos < 0:
-            newOrder = {'orderQty': 1, 'price': self.getOrderPrice(-pos), 'side': "Sell"}
+            newOrder = {'orderQty': 1, 'price': price, 'side': "Buy"}
+            #manticoreLog.info("Buy Position: %s" % price)
+        else:
+            newOrder = {'orderQty': 1, 'price': price, 'side': "Sell"}
+            #manticoreLog.info("Sell Position: %s" % price)
         self.toCreate.append(newOrder)
 
     def amendOrder(self, order):
@@ -89,7 +103,7 @@ class Bot:
         self.toAmend.append(newOrder)
 
     def getOrderPrice(self, pos):
-        price = self.buyPos if pos >= 0 else self.sellPos
+        price = self.buyPos if pos < 0 else self.sellPos
         if pos < 0:
             pos += 1
         else:
@@ -100,21 +114,22 @@ class Bot:
 
     def submitOrders(self):
         if time.time() - self.lastUpdated["createBulkOrders"] > WAIT_TIME: #TEMP VALUE
-            manticoreLog.info("Placing Orders:")
+            #manticoreLog.info("Placing Orders:")
             orderPos = reversed([i for i in range(1, self.orderPairs)])
             for i in orderPos:
-                if not self.maxPositionCheck():
-                    self.createOrder(i)
-                if not self.minPositionCheck():
+                #if not self.maxPositionCheck():
                     self.createOrder(-i)
+                #if not self.minPositionCheck():
+                    self.createOrder(i)
             if self.toCreate:
                 orderManager.exchange.bitmex.create_bulk_orders(self.toCreate)
             for order in self.toCreate:
-                manticoreLog.info("Order: %s" % order)
+                #.info("Order: %s" % order)
                 self.localAllOrders[order["clOrdID"]] = order
                 self.localCurrentOrders[order["clOrdID"]] = order
             self.lastUpdated["createBulkOrders"] = time.time()
-            self.reviseOrders()
+            self.toCreate = []
+            #self.reviseOrders()
 
     def reviseOrders(self):
         if time.time() - self.lastUpdated["amendBulkOrders"] > WAIT_TIME: #TEMP VALUE
@@ -152,17 +167,18 @@ class Bot:
                     self.data.numBuy += 1
                     self.data.standardAmount -= order["price"] * order["quantity"]
                     self.data.cryptoAmount += order["quantity"]
-                    self.feeProfit += (order["price"] * order["quantity"]) * 0.0250
+                    self.data.feeProfit += (order["price"] * order["quantity"]) * 0.0250
                     self.localCurrentOrders.pop(order["orderID"], None)
                     self.localFilledOrders[order["orderID"]] = order
                 if (order['side'] == "Buy") & (order['ordStatus'] == "Filled:"):
                     self.data.numSell += 1
                     self.data.standardAmount += order["price"] * order["quantity"]
                     self.data.cryptoAmount -= order["quantity"]
-                    self.feeProfit += (order["price"] * order["quantity"]) * 0.0250
+                    self.data.feeProfit += (order["price"] * order["quantity"]) * 0.0250
                     self.localCurrentOrders.pop(order["orderID"], None)
                     self.localFilledOrders[order["orderID"]] = order
-            self.lastUpdated["openOrders"] - time.time()
+            self.lastUpdated["openOrders"] = time.time()
+            manticoreLog.info("Fee Profit: %s" % self.data.feeProfit)
 
 
     def minPositionCheck(self):
@@ -196,13 +212,15 @@ class Bot:
         #TODO: spit back out an error
 
     def run(self):
-        print("test")
+        #print("test")
+        #orderManager.exchange.cancel_all_orders()
         while not self.didTerminate:
             if time.time() - self.currTime > self.data.config['terminateTime']:
                 self.didTerminate = False
                 break
             self.sanityCheck()
             self.updateOrderValues()
+            self.localUpdate()
             self.data.rateOfChange(self.recentAsks)
             if self.data.marketTrend == "Low":
                 self.position = 1

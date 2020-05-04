@@ -28,10 +28,11 @@ class Data:
 
     def rateOfChange(self, asks):
         rates = pandas.Series(asks).pct_change()
-        avgRate = rates.sum() / rates.size
-        if avgRate > 0.02: #TEMP VALUE
-            self.marketTrend = "High"
-        if avgRate < -0.02: #TEMP VALUE
-            self.marketTrend = "Low"
-        else:
-            self.marketTrend = "Side"
+        if not rates.empty:
+            avgRate = rates.sum() / rates.size
+            if avgRate > 0.02: #TEMP VALUE
+                self.marketTrend = "High"
+            if avgRate < -0.02: #TEMP VALUE
+                self.marketTrend = "Low"
+            else:
+                self.marketTrend = "Side"
