@@ -14,7 +14,8 @@ class Bot:
         self.didTerminate = False
         self.data = Data()
         self.currTime = time.time()
-        self.lastUpdated = {"bestAsk":self.currTime, "bestBid":self.currTime, "createBulkOrders":self.currTime, "amendBulkOrders":self.currTime, "openOrders":self.currTime}
+        self.startFunds = 0
+        self.lastUpdated = {"bestAsk":self.currTime, "bestBid":self.currTime, "createBulkOrders":self.currTime, "amendBulkOrders":self.currTime, "openOrders":self.currTime, "funds":self.currTime}
         self.bestAsk = 0
         self.sellPos = 0
         self.updateAsk()
@@ -30,6 +31,8 @@ class Bot:
         self.localCurrentOrders = {}
         self.localFilledOrders = {}
         self.marketAllOrders = {}
+        self.marketCurrentOrders = {}
+        self.marketFilledOrders = {}
         self.recentAsks = []
         self.toCreate = []
         self.toAmend = []
@@ -56,14 +59,14 @@ class Bot:
             if len(self.recentAsks) >= 200:
                 del self.recentAsks[100:]
             self.lastUpdated["bestAsk"] = time.time()
-            manticoreLog.info("Best Ask: %s" % self.bestAsk)
+            #manticoreLog.info("Best Ask: %s" % self.bestAsk)
 
     def updateBid(self):
         if time.time() - self.lastUpdated["bestBid"] > WAIT_TIME - 1:
             ticker = orderManager.exchange.get_ticker()
             self.bestBid = ticker["buy"]
             self.lastUpdated["bestBid"] = time.time()
-            manticoreLog.info("Best Bid: %s" % self.bestBid)
+            #manticoreLog.info("Best Bid: %s" % self.bestBid)
 
     def updateOrderValues(self):
         self.updateAsk()
@@ -101,6 +104,25 @@ class Bot:
             newOrder = {'clOrdID': order["clOrdID"], 'orderQty': order["orderQty"],
                         'price': self.bestAsk - orderManager.instrument['tickSize'], 'side': order["side"]}
         self.toAmend.append(newOrder)
+
+    def mergeOrders(self, buyOrders, sellOrders):
+        buy_to_merge = 0
+        sell_to_merge = 0
+        to_change = []
+        to_add = []
+        to_remove = []
+
+        for o in self.marketCurrentOrders:
+            if o['side'] == "Buy":
+                newOrd = buyOrders[buy_to_merge]
+                buy_to_merge += 1
+            else:
+                newOrd = sellOrders[sell_to_merge]
+                sell_to_merge += 1
+
+            if newOrd['orderQty'] != o['leavesQty']:
+                to_add.append({'orderID': o['orderID'], 'orderQty': o['cumQty'] + newOrd['orderQty'], 'price': newOrd['price'], 'side': o['side']})
+
 
     def getOrderPrice(self, pos):
         price = self.buyPos if pos < 0 else self.sellPos
@@ -160,17 +182,19 @@ class Bot:
         return min
 
     def localUpdate(self):
-        if time.time() - self.lastUpdated["openOrders"] > WAIT_TIME:  # TEMP VALUE
-            self.marketAllOrders = orderManager.exchange.bitmex.open_orders()
-            for order in self.marketAllOrders:
-                if (order['side'] == "Sell") & (order['ordStatus'] == "Filled:"):
+        if time.time() - self.lastUpdated["openOrders"] > 10:  # TEMP VALUE
+            self.marketAllOrders = orderManager.exchange.bitmex.all_orders()
+            self.marketCurrentOrders = orderManager.exchange.bitmex.open_orders()
+            self.marketFilledOrders = orderManager.exchange.bitmex.filled_orders()
+            for order in self.marketFilledOrders:
+                if (order['side'] == "Sell") & (self.localFilledOrders[order["orderID"]] == None):
                     self.data.numBuy += 1
                     self.data.standardAmount -= order["price"] * order["quantity"]
                     self.data.cryptoAmount += order["quantity"]
                     self.data.feeProfit += (order["price"] * order["quantity"]) * 0.0250
                     self.localCurrentOrders.pop(order["orderID"], None)
                     self.localFilledOrders[order["orderID"]] = order
-                if (order['side'] == "Buy") & (order['ordStatus'] == "Filled:"):
+                if (order['side'] == "Buy") & (self.localFilledOrders[order["orderID"]] == None):
                     self.data.numSell += 1
                     self.data.standardAmount += order["price"] * order["quantity"]
                     self.data.cryptoAmount -= order["quantity"]
@@ -179,7 +203,12 @@ class Bot:
                     self.localFilledOrders[order["orderID"]] = order
             self.lastUpdated["openOrders"] = time.time()
             manticoreLog.info("Fee Profit: %s" % self.data.feeProfit)
+            manticoreLog.info("Filled Orders: %s" % self.marketFilledOrders)
 
+    def updateProfit(self):
+        if time.time() - self.lastUpdated["funds"] > 10:
+            self.data.updateProfit(self.startFunds, orderManager.exchange.bitmex.funds()["availableMargin"])
+            self.lastUpdated["funds"] = time.time()
 
     def minPositionCheck(self):
         if orderManager.exchange.get_delta() <= self.minPosition:
@@ -207,7 +236,9 @@ class Bot:
                 time.sleep(10)
 
     def start(self):
-        if orderManager.exchange.bitmex.funds()["availableMargin"] >= self.data.cryptoAmount:
+        self.startFunds = orderManager.exchange.bitmex.funds()["availableMargin"]
+        if self.startFunds >= self.data.cryptoAmount:
+            manticoreLog.info("Funds: %s" % orderManager.exchange.bitmex.funds())
             self.run()
         #TODO: spit back out an error
 
@@ -221,6 +252,7 @@ class Bot:
             self.sanityCheck()
             self.updateOrderValues()
             self.localUpdate()
+            self.updateProfit()
             self.data.rateOfChange(self.recentAsks)
             if self.data.marketTrend == "Low":
                 self.position = 1

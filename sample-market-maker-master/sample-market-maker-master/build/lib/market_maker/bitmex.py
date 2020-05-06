@@ -178,9 +178,19 @@ class BitMEX(object):
         return self._curl_bitmex(path='order/bulk', postdict={'orders': orders}, verb='POST')
 
     @authentication_required
+    def all_orders(self):
+        """Get all orders."""
+        return self.ws.all_orders(self.orderIDPrefix)
+
+    @authentication_required
     def open_orders(self):
         """Get open orders."""
         return self.ws.open_orders(self.orderIDPrefix)
+
+    @authentication_required
+    def filled_orders(self):
+        """Get filled orders."""
+        return self.ws.filled_orders(self.orderIDPrefix)
 
     @authentication_required
     def http_open_orders(self):

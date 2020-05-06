@@ -116,6 +116,14 @@ class BitMEXWebsocket():
         # Filter to only open orders (leavesQty > 0) and those that we actually placed
         return [o for o in orders if str(o['clOrdID']).startswith(clOrdIDPrefix) and o['leavesQty'] > 0]
 
+    def filled_orders(self, clOrdIDPrefix):
+        orders = self.data['order']
+        return [o for o in orders if str(o['clOrdID']).startswith(clOrdIDPrefix) and o['ordStatus'] == "Filled"]
+
+    def all_orders(self, clOrdIDPrefix):
+        orders = self.data['order']
+        return [o for o in orders if str(o['clOrdID']).startswith(clOrdIDPrefix)]
+
     def position(self, symbol):
         positions = self.data['position']
         pos = [p for p in positions if p['symbol'] == symbol]
