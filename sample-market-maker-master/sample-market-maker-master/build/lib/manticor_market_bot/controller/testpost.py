@@ -9,7 +9,7 @@ r = requests.post("http://localhost:5000", data={
   "marketHighThreshold": 0.5,
   "relistThreshold": 0.01,
   "aggressiveness": 0.005,
-  "terminateTime": 120,
+  "terminateTime": 1800,
   "lossyShutdown": False
 })
 # And done.
