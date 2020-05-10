@@ -17,7 +17,7 @@ class Data:
         self.marketTrend = "Side"
         # The profit made from market trades
         self.marketProfitTotal = 0
-        self.marketProfitsLastHour = 0
+        #self.marketProfitsLastHour = 0
         # The profit made from BitMEX's fees for placing orders
         self.feeProfit = Decimal(str(0))
 
@@ -32,14 +32,14 @@ class Data:
         self.config['aggressiveness'] = float(self.config['aggressiveness'])
         self.config['terminateTime'] = int(self.config['terminateTime'])
         self.config['lossyShutdown'] = (self.config['lossyShutdown'] == "True")
-        print(webconfig)
+        #print(webconfig)
         self.cryptoAmount = self.config["walletAmountCrypto"]
         #self.config["terminateTime"] = self.config["terminateTime"] + time.time()
 
     # TODO: calculate total profit for last hour every 15 mins
     def updateProfit(self, start, current):
-        self.marketProfitTotal = current - start
-        self.marketProfitsLastHour = current - self.marketProfitsLastHour
+        self.marketProfitTotal = Decimal(current - start)/Decimal(str(10000000))
+        #self.marketProfitsLastHour = current - self.marketProfitsLastHour
 
     def rateOfChange(self, asks):
         rates = pandas.Series(asks).pct_change()
