@@ -39,8 +39,12 @@ class Data:
 
     # TODO: calculate total profit for last hour every 15 mins
     def updateProfit(self, start, current):
-        profit = "0.0" + str(current - start)
-        self.marketProfitTotal = Decimal(profit)
+        #if current - start > 0:
+        #    profit = str("0.0") + str(float(current - start))
+        #else:
+        #    profit = "-0.0" + (str(abs(float(current - start))))
+        profit = Decimal(str((current - start) / Decimal(str(10000000))))
+        self.marketProfitTotal = Decimal(str(profit))
         #self.marketProfitsLastHour = current - self.marketProfitsLastHour
 
     def rateOfChange(self, asks):

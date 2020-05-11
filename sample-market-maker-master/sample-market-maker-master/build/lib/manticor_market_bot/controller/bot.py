@@ -3,7 +3,7 @@ from manticor_market_bot.model.data import Data
 from manticor_market_bot.controller.static_instances import manticoreLog #orderManager
 from market_maker.custom_strategy import CustomOrderManager
 from decimal import Decimal
-from manticor_market_bot.controller.coinmarketcap import CoinMarketCap
+from manticor_market_bot.controller.coinmarketcap import getCoin, getPrice
 
 WAIT_TIME = 10
 
@@ -40,7 +40,6 @@ class Bot:
         self.toAmend = []
         self.maxPosition = 1000
         self.minPosition = -1000
-        self.cmc = False
         self.coinName = False
         # self.updateBid()
         # self.updateAsk()
@@ -62,7 +61,7 @@ class Bot:
     def updateAsk(self):
         if time.time() - self.lastUpdated["bestAsk"] > -1:
             ticker = self.orderManager.exchange.get_ticker()
-            self.bestAsk = ticker["sell"]
+            self.bestAsk = getPrice(self.coinName) if self.data.config['dataSource'] == 'CoinMarketCap' else ticker['sell']
             self.recentAsks.append(self.bestAsk)
             if len(self.recentAsks) >= 200:
                 del self.recentAsks[100:]
@@ -72,8 +71,8 @@ class Bot:
     def updateBid(self):
         if time.time() - self.lastUpdated["bestBid"] > -1:
             ticker = self.orderManager.exchange.get_ticker()
-            if self.cmc:
-                self.bestBid = self.cmc.getPrice(self.coinName)
+            if self.data.config['dataSource'] == "CoinMarketCap":
+                self.bestBid = getPrice(self.coinName)
             else:
                 self.bestBid = ticker["buy"]
             self.lastUpdated["bestBid"] = time.time()
@@ -82,8 +81,12 @@ class Bot:
     def updateOrderValues(self):
         self.updateAsk()
         self.updateBid()
-        self.buyPos = self.bestBid + self.orderManager.instrument['tickSize']
-        self.sellPos = self.bestAsk - self.orderManager.instrument['tickSize']
+        if self.data.config['dataSource'] == "CoinMarketCap":
+            self.buyPos = self.bestBid - self.orderManager.instrument['tickSize']
+            self.sellPos = self.bestAsk + self.orderManager.instrument['tickSize']
+        else:
+            self.buyPos = self.bestBid + self.orderManager.instrument['tickSize']
+            self.sellPos = self.bestAsk - self.orderManager.instrument['tickSize']
 
         if self.buyPos == self.orderManager.exchange.get_highest_buy()['price']:
             self.buyPos = self.bestBid
@@ -304,8 +307,7 @@ class Bot:
     def start(self):
         self.initOrderManager()
         if self.data.config["dataSource"] == "CoinMarketCap":
-            self.cmc = CoinMarketCap()
-            self.coinName = self.cmc.getCoin(self.data.config["symbol"])
+            self.coinName = getCoin(self.data.config["symbol"])
         self.startFunds = self.orderManager.exchange.bitmex.funds()["walletBalance"]
         if self.startFunds >= self.data.cryptoAmount:
             manticoreLog.info("Funds: %s" % self.orderManager.exchange.bitmex.funds())
@@ -317,7 +319,7 @@ class Bot:
         #orderManager.exchange.cancel_all_orders()
         while not self.didTerminate:
             if time.time() - self.currTime > self.data.config['terminateTime']:
-                self.didTerminate = False
+                self.didTerminate = True
             self.sanityCheck()
             #self.updateOrderValues()
             #self.localUpdate()
@@ -332,3 +334,4 @@ class Bot:
                     self.position = -1
             else:
                 self.submitOrders()
+        self.orderManager.exchange.cancel_alciml_orders()
