@@ -13,15 +13,14 @@ def _corsify_actual_response(response):
     response.headers.add("Access-Control-Allow-Origin", "*")
     return response
 
-
-mantibot = Bot()
-
 @app.route('/', methods=['POST','OPTIONS'])
 def result():
     if request.method == "OPTIONS":  # CORS preflight
         return _build_cors_prelight_response()
     elif request.method == "POST":  # The actual request following the preflight
+        mantibot = Bot()
         mantibot.data.updateConfigs(request.form.to_dict())
+        print(mantibot.data.config)
         mantibot.start()
         return _corsify_actual_response(jsonify("RECEIVED!"))
 

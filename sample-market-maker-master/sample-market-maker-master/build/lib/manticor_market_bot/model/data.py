@@ -32,13 +32,15 @@ class Data:
         self.config['aggressiveness'] = float(self.config['aggressiveness'])
         self.config['terminateTime'] = int(self.config['terminateTime'])
         self.config['lossyShutdown'] = (self.config['lossyShutdown'] == "True")
+
         #print(webconfig)
         self.cryptoAmount = self.config["walletAmountCrypto"]
         #self.config["terminateTime"] = self.config["terminateTime"] + time.time()
 
     # TODO: calculate total profit for last hour every 15 mins
     def updateProfit(self, start, current):
-        self.marketProfitTotal = Decimal(current - start)/Decimal(str(10000000))
+        profit = "0.0" + str(current - start)
+        self.marketProfitTotal = Decimal(profit)
         #self.marketProfitsLastHour = current - self.marketProfitsLastHour
 
     def rateOfChange(self, asks):

@@ -24,14 +24,14 @@ logger = log.setup_custom_logger('root')
 
 
 class ExchangeInterface:
-    def __init__(self, dry_run=False):
+    def __init__(self, dry_run=False, curr_symbol=settings.SYMBOL, api_key=settings.API_KEY, api_secret=settings.API_SECRET):
         self.dry_run = dry_run
         if len(sys.argv) > 1:
             self.symbol = sys.argv[1]
         else:
-            self.symbol = settings.SYMBOL
+            self.symbol = curr_symbol
         self.bitmex = bitmex.BitMEX(base_url=settings.BASE_URL, symbol=self.symbol,
-                                    apiKey=settings.API_KEY, apiSecret=settings.API_SECRET,
+                                    apiKey=api_key, apiSecret=api_secret,
                                     orderIDPrefix=settings.ORDERID_PREFIX, postOnly=settings.POST_ONLY,
                                     timeout=settings.TIMEOUT)
 
@@ -198,12 +198,12 @@ class ExchangeInterface:
 
 
 class OrderManager:
-    def __init__(self):
-        self.exchange = ExchangeInterface(settings.DRY_RUN)
+    def __init__(self, curr_symbol=settings.SYMBOL, api_key=settings.API_KEY, api_secret=settings.API_SECRET):
+        self.exchange = ExchangeInterface(settings.DRY_RUN, curr_symbol, api_key, api_secret)
         # Once exchange is created, register exit handler that will always cancel orders
         # on any error.
-        atexit.register(self.exit)
-        signal.signal(signal.SIGTERM, self.exit)
+        #atexit.register(self.exit)
+        #signal.signal(signal.SIGTERM, self.exit)
 
         logger.info("Using symbol %s." % self.exchange.symbol)
 
