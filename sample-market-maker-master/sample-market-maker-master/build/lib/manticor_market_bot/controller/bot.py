@@ -5,7 +5,7 @@ from market_maker.custom_strategy import CustomOrderManager
 from decimal import Decimal
 from manticor_market_bot.controller.coinmarketcap import getCoin, getPrice
 
-WAIT_TIME = 10
+#WAIT_TIME = 10
 
 def toNearest(num, round_interval):
     numDec = Decimal(str(round_interval))
@@ -24,6 +24,7 @@ class Bot:
         self.bestBid = 0
         self.buyPos = 0
         #self.spread = self.bestAsk - self.bestBid
+        self.waitTime = 0
         self.orderPairs = 6
         self.orderStartQty = 100
         self.orderStepQty = 100
@@ -143,7 +144,7 @@ class Bot:
         #return price * (1 + self.data.config["aggressiveness"]) ** pos
 
     def submitOrders(self):
-        if time.time() - self.lastUpdated["createBulkOrders"] > WAIT_TIME: #TEMP VALUE
+        if time.time() - self.lastUpdated["createBulkOrders"] > self.waitTime: #TEMP VALUE
             self.updateOrderValues()
             #manticoreLog.info("Placing Orders:")
             orderPos = reversed([i for i in range(1, self.orderPairs)])
@@ -164,7 +165,7 @@ class Bot:
 
     # Currently unused, might be deleted
     def reviseOrders(self):
-        if time.time() - self.lastUpdated["amendBulkOrders"] > WAIT_TIME: #TEMP VALUE
+        if time.time() - self.lastUpdated["amendBulkOrders"] > self.waitTime: #TEMP VALUE
             for amended_order in self.toAmend:
                 current_order = self.marketAllOrders[amended_order["clOrdID"]]
                 if not abs((amended_order['price'] / current_order['price']) - 1) > self.data.config["relistThreshold"]:
@@ -307,7 +308,10 @@ class Bot:
     def start(self):
         self.initOrderManager()
         if self.data.config["dataSource"] == "CoinMarketCap":
+            self.waitTime = 20
             self.coinName = getCoin(self.data.config["symbol"])
+        else:
+            self.waitTime = 10
         self.startFunds = self.orderManager.exchange.bitmex.funds()["walletBalance"]
         if self.startFunds >= self.data.cryptoAmount:
             manticoreLog.info("Funds: %s" % self.orderManager.exchange.bitmex.funds())
