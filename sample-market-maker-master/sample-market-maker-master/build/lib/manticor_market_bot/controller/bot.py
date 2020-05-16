@@ -18,12 +18,11 @@ class Bot:
         self.data = Data()
         self.currTime = time.time()
         self.startFunds = 0
-        self.lastUpdated = {"bestAsk":self.currTime, "bestBid":self.currTime, "createBulkOrders":self.currTime, "amendBulkOrders":self.currTime, "openOrders":self.currTime, "funds":self.currTime}
+        self.lastUpdated = {"bestAsk": self.currTime, "bestBid": self.currTime, "createBulkOrders": self.currTime, "amendBulkOrders": self.currTime, "openOrders": self.currTime, "funds": self.currTime}
         self.bestAsk = 0
         self.sellPos = 0
         self.bestBid = 0
         self.buyPos = 0
-        #self.spread = self.bestAsk - self.bestBid
         self.waitTime = 0
         self.orderPairs = 6
         self.orderStartQty = 100
@@ -42,21 +41,11 @@ class Bot:
         self.maxPosition = 1000
         self.minPosition = -1000
         self.coinName = False
-        # self.updateBid()
-        # self.updateAsk()
 
     def initOrderManager(self):
         self.orderManager = CustomOrderManager(self.data.config['symbol'], self.data.config['apiKey'], self.data.config['apiSecret'])
 
-    #Not yet used, ask about how
-    def sanitize(self, response):
-        if response == {"error": {"message": "The system is currently overloaded. Please try again later.", "name": "HTTPError"}}:
-            return False
-        return True
-
     def sanityCheck(self):
-        #if orderManager.bitmex.get_orders() != self.localAllOrders:
-        #    self.didTerminate = True
         return True
 
     def updateAsk(self):
@@ -110,17 +99,6 @@ class Bot:
             #manticoreLog.info("Sell Position: %s" % price)
         self.toCreate.append(newOrder)
 
-    #Currently unused, might be deleted
-    def amendOrder(self, order):
-        newOrder = {}
-        if order["side"] == "Buy":
-            newOrder = {'clOrdID': order["clOrdID"], 'orderQty': order["orderQty"],
-                        'price': self.bestBid + self.orderManager.instrument['tickSize'], 'side': order["side"]}
-        if order["side"] == "Sell":
-            newOrder = {'clOrdID': order["clOrdID"], 'orderQty': order["orderQty"],
-                        'price': self.bestAsk - self.orderManager.instrument['tickSize'], 'side': order["side"]}
-        self.toAmend.append(newOrder)
-
     def getOrderPrice(self, pos):
         price = self.buyPos if pos < 0 else self.sellPos
         if pos < 0:
@@ -138,45 +116,21 @@ class Bot:
         highBuy = self.highestBuyOrder()
         if pos >= 0 and adjPrice < highBuy:
             adjPrice = highBuy + self.orderManager.instrument['tickSize']
-
         return adjPrice
-        #return toNearest(price * (1 + self.data.config["aggressiveness"]) ** pos, orderManager.instrument['tickSize'])
-        #return price * (1 + self.data.config["aggressiveness"]) ** pos
 
     def submitOrders(self):
-        if time.time() - self.lastUpdated["createBulkOrders"] > self.waitTime: #TEMP VALUE
+        if time.time() - self.lastUpdated["createBulkOrders"] > self.waitTime:
             self.updateOrderValues()
             #manticoreLog.info("Placing Orders:")
             orderPos = reversed([i for i in range(1, self.orderPairs)])
             for i in orderPos:
-                #if not self.maxPositionCheck():
                 self.createOrder(-i)
-                #if not self.minPositionCheck():
                 self.createOrder(i)
-            # for order in self.toCreate:
-            #     #.info("Order: %s" % order)
-            #     self.localAllOrders[order["clOrdID"]] = order
-            #     self.localCurrentOrders[order["clOrdID"]] = order
             buyOrders = [o for o in self.toCreate if o['side'] == "Buy"]
             sellOrders = [o for o in self.toCreate if o['side'] == "Sell"]
             self.toCreate.clear()
             self.lastUpdated["createBulkOrders"] = time.time()
             self.mergeOrders(buyOrders, sellOrders)
-
-    # Currently unused, might be deleted
-    def reviseOrders(self):
-        if time.time() - self.lastUpdated["amendBulkOrders"] > self.waitTime: #TEMP VALUE
-            for amended_order in self.toAmend:
-                current_order = self.marketAllOrders[amended_order["clOrdID"]]
-                if not abs((amended_order['price'] / current_order['price']) - 1) > self.data.config["relistThreshold"]:
-                    self.toAmend.remove(amended_order)
-            if self.toAmend:
-                self.orderManager.exchange.bitmex.amend_bulk_orders(self.toAmend)
-            self.lastUpdated["amendBulkOrders"] = time.time()
-            for order in self.toAmend:
-                self.localAllOrders[order["clOrdID"]] = order
-                self.localCurrentOrders[order["clOrdID"]] = order
-            self.lastUpdated["amendBulkOrders"] = time.time()
 
     def mergeOrders(self, buyOrders, sellOrders):
         buy_to_merge = 0
@@ -233,6 +187,10 @@ class Bot:
                 return self.submitOrders()
 
         if to_add:
+            buyOrders = [o for o in to_add if o['side'] == "Buy"]
+            sellOrders = [o for o in to_add if o['side'] == "Sell"]
+            self.data.numBuy += len(buyOrders)
+            self.data.numSell += len(sellOrders)
             self.orderManager.exchange.create_bulk_orders(to_add)
 
         if to_remove:
@@ -254,25 +212,21 @@ class Bot:
         return min['price']
 
     def localUpdate(self):
-        if time.time() - self.lastUpdated["openOrders"] > -1:  # TEMP VALUE
+        if time.time() - self.lastUpdated["openOrders"] > -1:
             self.marketAllOrders = self.orderManager.exchange.bitmex.all_orders()
             self.marketCurrentOrders = self.orderManager.exchange.bitmex.open_orders()
             manticoreLog.info(self.marketCurrentOrders)
             self.marketFilledOrders = self.orderManager.exchange.bitmex.filled_orders()
+            self.data.orderbook = self.marketCurrentOrders
             manticoreLog.info(self.marketFilledOrders)
-
-            # for o in self.marketCurrentOrders:
-            #     self.qntFilled[o['clOrdID']] = self.qntFilled.get(o['clOrdID'], o['orderQty'])
-            #     num_filled = self.qntFilled[o['clOrdID']] - o['leavesQty']
-            #     self.qntFilled[o['clOrdID']] = self.qntFilled[o['clOrdID']] - num_filled
-            #     self.data.feeProfit += Decimal(str(o["price"] * num_filled)) * Decimal(str(0.0250))
-
             self.lastUpdated["openOrders"] = time.time()
             #manticoreLog.info("Filled Orders: %s" % self.marketFilledOrders)
 
     def updateProfit(self):
         if time.time() - self.lastUpdated["funds"] > 10:
-            self.data.updateProfit(self.startFunds, self.orderManager.exchange.bitmex.funds()["walletBalance"])
+            balance = self.orderManager.exchange.bitmex.funds()["walletBalance"]
+            self.data.updateProfit(self.startFunds, balance)
+            self.data.walletBalance = balance
             #manticoreLog.info("Available funds: %s" % orderManager.exchange.bitmex.funds()['availableMargin'])
             #manticoreLog.info("Total equity value: %s" % orderManager.exchange.bitmex.funds()['amount'])
             #manticoreLog.info("Available funds: %s" % self.orderManager.exchange.bitmex.funds())
@@ -290,21 +244,6 @@ class Bot:
             return True
         return False
 
-    def test_run(self):
-        print("Termination time: %f" % self.data.config["terminateTime"])
-        while not self.didTerminate:
-            self.updateAsk()
-            self.updateBid()
-            print("Trades are occuring!")
-            print("Current time: %f" % time.time())
-            print("Best Ask: %f / Best Bid: %f" % (self.bestAsk, self.bestBid))
-            if self.data.config["terminateTime"] <= time.time():
-                self.didTerminate = True
-                print("Trades have concluded!")
-            else:
-                print("-------Waiting 10 secs-------")
-                time.sleep(10)
-
     def start(self):
         self.initOrderManager()
         if self.data.config["dataSource"] == "CoinMarketCap":
@@ -316,17 +255,12 @@ class Bot:
         if self.startFunds >= self.data.cryptoAmount:
             manticoreLog.info("Funds: %s" % self.orderManager.exchange.bitmex.funds())
             self.run()
-        #TODO: spit back out an error
 
     def run(self):
-        #print("test")
-        #orderManager.exchange.cancel_all_orders()
         while not self.didTerminate:
             if time.time() - self.currTime > self.data.config['terminateTime']:
                 self.didTerminate = True
             self.sanityCheck()
-            #self.updateOrderValues()
-            #self.localUpdate()
             self.updateProfit()
             self.data.rateOfChange(self.recentAsks)
             if self.data.marketTrend == "Low":
@@ -338,4 +272,4 @@ class Bot:
                     self.position = -1
             else:
                 self.submitOrders()
-        self.orderManager.exchange.cancel_alciml_orders()
+        self.orderManager.exchange.cancel_all_orders()

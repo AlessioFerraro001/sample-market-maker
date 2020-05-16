@@ -7,7 +7,6 @@ import urllib
 from websocket import create_connection
 
 ###
-# websocket-apikey-auth-manticor_test.py
 #
 # Reference Python implementation for authorizing with websocket.
 # See https://www.bitmex.com/app/wsAPI for more details, including a list

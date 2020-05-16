@@ -1,10 +1,12 @@
-import json, time, pandas
+import pandas
 from decimal import Decimal
 
 class Data:
     def __init__(self):
         # The json that holds all the user configured values
         self.config = {}
+        # The amount currently in the users's wallet
+        self.walletBalance = 0
         # The amount of standard currency we have to buy with
         self.standardAmount = 0
         # The amount of cryptocurrency we have to sell
@@ -17,9 +19,10 @@ class Data:
         self.marketTrend = "Side"
         # The profit made from market trades
         self.marketProfitTotal = 0
-        #self.marketProfitsLastHour = 0
         # The profit made from BitMEX's fees for placing orders
         self.feeProfit = Decimal(str(0))
+        # Currently active orders
+        self.orderbook = []
 
     def updateConfigs(self, webconfig):
         # Download JSON from website
@@ -32,10 +35,7 @@ class Data:
         self.config['aggressiveness'] = float(self.config['aggressiveness'])
         self.config['terminateTime'] = int(self.config['terminateTime'])
         self.config['lossyShutdown'] = (self.config['lossyShutdown'] == "True")
-
-        #print(webconfig)
         self.cryptoAmount = self.config["walletAmountCrypto"]
-        #self.config["terminateTime"] = self.config["terminateTime"] + time.time()
 
     # TODO: calculate total profit for last hour every 15 mins
     def updateProfit(self, start, current):
@@ -45,15 +45,14 @@ class Data:
         #    profit = "-0.0" + (str(abs(float(current - start))))
         profit = Decimal(str((current - start) / Decimal(str(10000000))))
         self.marketProfitTotal = Decimal(str(profit))
-        #self.marketProfitsLastHour = current - self.marketProfitsLastHour
 
     def rateOfChange(self, asks):
         rates = pandas.Series(asks).pct_change()
         if not rates.empty:
             avgRate = rates.sum() / rates.size
-            if avgRate > 0.02: #TEMP VALUE
+            if avgRate > 0.02:
                 self.marketTrend = "High"
-            if avgRate < -0.02: #TEMP VALUE
+            if avgRate < -0.02:
                 self.marketTrend = "Low"
             else:
                 self.marketTrend = "Side"

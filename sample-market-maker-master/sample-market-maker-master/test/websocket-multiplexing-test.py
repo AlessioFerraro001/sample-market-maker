@@ -9,7 +9,6 @@ import uuid
 from websocket import create_connection
 
 ###
-# websocket-apikey-auth-manticor_test.py
 #
 # Reference Python implementation for multiplexing realtime data for multiple
 # users through a single websocket connection.

@@ -11,7 +11,6 @@ r = requests.post("http://localhost:5000", data={
   "relistThreshold": 0.01,
   "aggressiveness": 0.0005,
   "terminateTime": 1800,
-  "lossyShutdown": False
 })
 # And done.
 print(r.text) # displays the result body.
