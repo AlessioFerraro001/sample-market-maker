@@ -5,6 +5,8 @@ class Data:
     def __init__(self):
         # The json that holds all the user configured values
         self.config = {}
+        #
+        self.walletBalance = 0
         # The amount of standard currency we have to buy with
         self.standardAmount = 0
         # The amount of cryptocurrency we have to sell
@@ -20,6 +22,8 @@ class Data:
         #self.marketProfitsLastHour = 0
         # The profit made from BitMEX's fees for placing orders
         self.feeProfit = Decimal(str(0))
+        # Currently active orders
+        self.orderbook = []
 
     def updateConfigs(self, webconfig):
         # Download JSON from website

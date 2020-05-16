@@ -233,6 +233,10 @@ class Bot:
                 return self.submitOrders()
 
         if to_add:
+            buyOrders = [o for o in to_add if o['side'] == "Buy"]
+            sellOrders = [o for o in to_add if o['side'] == "Sell"]
+            self.data.numBuy += len(buyOrders)
+            self.data.numSell += len(sellOrders)
             self.orderManager.exchange.create_bulk_orders(to_add)
 
         if to_remove:
@@ -260,7 +264,7 @@ class Bot:
             manticoreLog.info(self.marketCurrentOrders)
             self.marketFilledOrders = self.orderManager.exchange.bitmex.filled_orders()
             manticoreLog.info(self.marketFilledOrders)
-
+            self.data.orderbook = self.marketCurrentOrders
             # for o in self.marketCurrentOrders:
             #     self.qntFilled[o['clOrdID']] = self.qntFilled.get(o['clOrdID'], o['orderQty'])
             #     num_filled = self.qntFilled[o['clOrdID']] - o['leavesQty']
@@ -273,6 +277,7 @@ class Bot:
     def updateProfit(self):
         if time.time() - self.lastUpdated["funds"] > 10:
             self.data.updateProfit(self.startFunds, self.orderManager.exchange.bitmex.funds()["walletBalance"])
+            self.data.walletBalance = self.orderManager.exchange.bitmex.funds()["walletBalance"]
             #manticoreLog.info("Available funds: %s" % orderManager.exchange.bitmex.funds()['availableMargin'])
             #manticoreLog.info("Total equity value: %s" % orderManager.exchange.bitmex.funds()['amount'])
             #manticoreLog.info("Available funds: %s" % self.orderManager.exchange.bitmex.funds())
@@ -338,4 +343,4 @@ class Bot:
                     self.position = -1
             else:
                 self.submitOrders()
-        self.orderManager.exchange.cancel_alciml_orders()
+        self.orderManager.exchange.cancel_all_orders()
