@@ -1,6 +1,6 @@
 import requests
 r = requests.post("http://localhost:5000", data={
-  "dataSource": "CoinMarketCap",
+  "dataSource": "BitMEX",
   "apiKey": "exNVCVPa_hDetpwHDR4paEE9",
   "apiSecret": "BqUPgajs4RMRNUyjlkMfDKu38ckK0LRPrbwp1Clb70Ong9Q9",
   "symbol": "XBTUSD",

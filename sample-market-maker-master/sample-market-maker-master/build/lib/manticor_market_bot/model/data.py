@@ -34,7 +34,6 @@ class Data:
         self.config['relistThreshold'] = float(self.config['relistThreshold'])
         self.config['aggressiveness'] = float(self.config['aggressiveness'])
         self.config['terminateTime'] = int(self.config['terminateTime'])
-        self.config['lossyShutdown'] = (self.config['lossyShutdown'] == "True")
         self.cryptoAmount = self.config["walletAmountCrypto"]
 
     # TODO: calculate total profit for last hour every 15 mins
@@ -50,9 +49,9 @@ class Data:
         rates = pandas.Series(asks).pct_change()
         if not rates.empty:
             avgRate = rates.sum() / rates.size
-            if avgRate > 0.02:
+            if avgRate > self.config['marketHighThreshold']:
                 self.marketTrend = "High"
-            if avgRate < -0.02:
+            if avgRate < self.config['marketLowThreshold']:
                 self.marketTrend = "Low"
             else:
                 self.marketTrend = "Side"
